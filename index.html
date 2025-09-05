@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Deals CRM • Kanban</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:rgba(255,255,255,0.06);
+      --panel-strong:rgba(255,255,255,0.12);
+      --text:#e8ecf1;
+      --muted:#9fb1c6;
+      --primary:#6ee7ff;
+      --primary-2:#7c3aed;
+      --positive:#22c55e;
+      --negative:#ef4444;
+      --warning:#f59e0b;
+      --shadow:0 10px 30px rgba(0,0,0,.45);
+      --radius:18px;
+    }
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji','Segoe UI Emoji';
+      color:var(--text); background: radial-gradient(1200px 800px at 10% -10%, #1a2a6c55, transparent), radial-gradient(1200px 800px at 110% 10%, #b21f1f22, transparent), linear-gradient(135deg, #0b1220 0%, #121a2e 60%, #0b1220 100%);
+      overflow:hidden;
+    }
+    
+    /* Shiny topbar */
+    .topbar{
+      position:relative; z-index:2; display:flex; align-items:center; gap:16px; padding:16px 20px; backdrop-filter: blur(10px);
+      background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+      border-bottom:1px solid rgba(255,255,255,.1);
+      box-shadow: var(--shadow);
+    }
+    .logo{ display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:.3px; }
+    .logo-badge{ width:30px; height:30px; border-radius:10px; background: conic-gradient(from 0deg, var(--primary), #22d3ee, #a78bfa, var(--primary)); box-shadow:0 0 40px #22d3ee44; }
+
+    .btn{ position:relative; border:none; border-radius:999px; padding:10px 16px; font-weight:700; color:#081018;
+      background: linear-gradient(180deg, #9ae6ff, #22d3ee);
+      cursor:pointer; box-shadow:0 10px 30px rgba(34,211,238,.35);
+      transition: transform .12s ease; }
+    .btn:hover{ transform: translateY(-1px); }
+    .btn.secondary{ color:var(--text); background: linear-gradient(180deg, #334155, #1f2937); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 10px 25px rgba(0,0,0,.45); }
+    .btn.shiny:before{ content:""; position:absolute; inset:-2px; border-radius:inherit; background: linear-gradient(120deg, rgba(255,255,255,.9), transparent 40% 60%, rgba(255,255,255,.7)); filter: blur(8px); opacity:.12; }
+
+    .search{ flex:1; display:flex; gap:10px; align-items:center; background:var(--panel); border:1px solid rgba(255,255,255,.1); padding:8px 12px; border-radius:999px; }
+    .search input{ flex:1; background:transparent; border:none; outline:none; color:var(--text); font-size:14px; }
+
+    .board{ position:relative; height:calc(100% - 72px); padding:16px; display:grid; grid-template-columns: repeat(5, minmax(260px, 1fr)); gap:16px; overflow:auto; }
+
+    .col{ background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius); display:flex; flex-direction:column; min-height:300px; box-shadow: var(--shadow); }
+    .col header{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:14px 14px; border-bottom:1px solid rgba(255,255,255,.08); background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); border-top-left-radius:inherit; border-top-right-radius:inherit; }
+    .col header .title{ font-weight:800; letter-spacing:.4px; }
+    .col header .badge{ font-size:12px; opacity:.9; padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.08); }
+
+    .dropzone{ flex:1; padding:12px; display:flex; flex-direction:column; gap:12px; overflow:auto; }
+    .dropzone.dragover{ outline:2px dashed #93c5fd; outline-offset:-6px; background:linear-gradient(0deg, rgba(147,197,253,.08), transparent 40%); }
+
+    .card{ position:relative; background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04)); border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:8px; box-shadow: var(--shadow); cursor:grab; }
+    .card:active{ cursor:grabbing; }
+    .card .title{ font-weight:800; }
+    .meta{ display:flex; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+    .chip{ background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1); padding:4px 8px; border-radius:999px; }
+
+    .actions{ display:flex; gap:8px; justify-content:flex-end; }
+    .icon-btn{ background:transparent; border:none; cursor:pointer; padding:6px; border-radius:10px; color:var(--muted); }
+    .icon-btn:hover{ background:rgba(255,255,255,.08); color:var(--text); }
+
+    /* Toasts */
+    .toast{ position:fixed; right:20px; bottom:20px; display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px; background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06)); border:1px solid rgba(255,255,255,.12); box-shadow: var(--shadow); z-index:50; animation: pop .18s ease-out; }
+    .toast.success{ border-color: rgba(34,197,94,.6); box-shadow:0 10px 30px rgba(34,197,94,.25); }
+    .toast.error{ border-color: rgba(239,68,68,.6); box-shadow:0 10px 30px rgba(239,68,68,.25); }
+    @keyframes pop{ from{ transform: translateY(8px) scale(.98); opacity:0 } to{ transform: none; opacity:1 } }
+
+    /* Dialog */
+    dialog{ border:none; border-radius:18px; padding:0; background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06)); color:var(--text); width:min(520px, 92vw); }
+    dialog::backdrop{ background:rgba(0,0,0,.45); backdrop-filter: blur(2px)}
+    .dialog-body{ padding:18px; display:grid; gap:14px; }
+    .form-row{ display:grid; gap:6px; }
+    .form-row label{ font-size:13px; color:var(--muted); }
+    .form-row input, .form-row select, .form-row textarea{ background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); color:var(--text); border-radius:10px; padding:10px; outline:none; font:inherit; }
+    .dialog-footer{ display:flex; justify-content:space-between; gap:10px; padding:16px 18px; border-top:1px solid rgba(255,255,255,.12); }
+
+    /* Won/Lost fun */
+    .celebrate{ position:fixed; pointer-events:none; inset:0; z-index:40 }
+    .lost-shake{ animation:shake .35s ease both; }
+    @keyframes shake{ 0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)} }
+
+    /* Tiny helpers */
+    .hidden{ display:none }
+    .spacer{ flex:1 }
+    .pill{ border-radius:999px }
+    .sum{ font-size:12px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <canvas class="celebrate" id="confetti"></canvas>
+  <div class="topbar">
+    <div class="logo"><div class="logo-badge"></div><div>Deals CRM • Kanban</div></div>
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="search" placeholder="Search deals, owners, notes… (⌘/Ctrl+K)"/>
+    </div>
+    <button id="addDealBtn" class="btn shiny">➕ Add deal</button>
+    <button id="exportBtn" class="btn secondary">⬇️ Export</button>
+    <div class="spacer"></div>
+    <div class="sum" id="summary"></div>
+  </div>
+
+  <main class="board" id="board" aria-label="Deals board">
+    <!-- Columns injected by JS -->
+  </main>
+
+  <!-- Deal Dialog -->
+  <dialog id="dealDialog">
+    <form method="dialog" id="dealForm">
+      <div class="dialog-body">
+        <h3 id="dialogTitle" style="margin:0; font-weight:800">New deal</h3>
+        <input type="hidden" name="id" />
+        <div class="form-row">
+          <label for="title">Title</label>
+          <input id="title" name="title" placeholder="e.g., ACME – Annual plan" required />
+        </div>
+        <div class="form-row">
+          <label for="value">Value (USD)</label>
+          <input id="value" name="value" type="number" min="0" step="1" placeholder="10000" required />
+        </div>
+        <div class="form-row">
+          <label for="owner">Owner</label>
+          <input id="owner" name="owner" placeholder="Name" required />
+        </div>
+        <div class="form-row">
+          <label for="stage">Stage</label>
+          <select id="stage" name="stage"></select>
+        </div>
+        <div class="form-row">
+          <label for="notes">Notes</label>
+          <textarea id="notes" name="notes" rows="3" placeholder="Context, next steps, etc."></textarea>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <div style="display:flex; gap:8px">
+          <button class="btn secondary" value="cancel">Cancel</button>
+          <button class="btn" id="saveDealBtn" value="default">Save</button>
+        </div>
+        <button class="btn secondary" id="deleteDealBtn" type="button">🗑 Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts"></div>
+
+  <script>
+  // ======= Data & Storage =======
+  const STAGES = [
+    { key: 'lead', label: 'Leads' },
+    { key: 'qualified', label: 'Qualified' },
+    { key: 'proposal', label: 'Proposal' },
+    { key: 'won', label: 'Won' },
+    { key: 'lost', label: 'Lost' },
+  ];
+  const STORAGE_KEY = 'dealsCRM_v1';
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  let state = loadState();
+  maybeSeed();
+
+  function loadState(){
+    try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : { deals: [] }; }catch(e){ return { deals: [] } }
+  }
+  function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); render(); }
+
+  function maybeSeed(){
+    if(state.deals.length) return;
+    const now = Date.now();
+    state.deals = [
+      mkDeal('ACME Inc. – Pilot', 12000, 'Maya', 'lead', 'Requested demo'),
+      mkDeal('Globex – Renewal', 34000, 'Ravi', 'qualified', 'Legal reviewing MSA'),
+      mkDeal('Initech – Expansion', 58000, 'Sam', 'proposal', 'Awaiting signature'),
+      mkDeal('Umbrella – New biz', 24000, 'Li', 'lead', 'Cold outreach 09/01'),
+    ];
+    saveState();
+  }
+
+  function mkDeal(title, value, owner, stage, notes){
+    return { id: String(Date.now() + Math.random()).slice(0,13), title, value: Number(value)||0, owner, stage, notes: notes||'', createdAt: Date.now() };
+  }
+
+  // ======= UI Rendering =======
+  const board = $('#board');
+  function render(){
+    // Summary
+    const totals = state.deals.reduce((acc,d)=>{ acc.count++; acc.value+=d.value; if(d.stage==='won') acc.won+=d.value; return acc; }, {count:0,value:0,won:0});
+    $('#summary').textContent = `${totals.count} deals • $${fmt(totals.value)} total (${fmt(totals.won)} won)`;
+
+    // Columns
+    board.innerHTML = '';
+    STAGES.forEach(stage => {
+      const items = filteredDeals().filter(d=>d.stage===stage.key);
+      const totalVal = items.reduce((s,d)=>s+d.value,0);
+      const col = document.createElement('section'); col.className = 'col'; col.dataset.stage = stage.key;
+      col.innerHTML = `
+        <header>
+          <div class="title">${stage.label}</div>
+          <div style="display:flex; align-items:center; gap:8px">
+            <span class="badge">${items.length} • $${fmt(totalVal)}</span>
+            ${stage.key!=='lost' && stage.key!=='won' ? `<button class="icon-btn" title="Add deal to ${stage.label}" data-add="${stage.key}">➕</button>`: ''}
+          </div>
+        </header>
+        <div class="dropzone" data-stage="${stage.key}"></div>
+      `;
+      board.appendChild(col);
+
+      const dz = col.querySelector('.dropzone');
+      items.sort((a,b)=>b.createdAt-a.createdAt).forEach(deal => dz.appendChild(dealCard(deal)));
+
+      // DnD listeners
+      dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('dragover'); });
+      dz.addEventListener('dragleave', ()=>dz.classList.remove('dragover'));
+      dz.addEventListener('drop', e=>{ 
+        e.preventDefault(); 
+        dz.classList.remove('dragover'); 
+        const id=e.dataTransfer.getData('text/plain'); 
+        moveDeal(id, dz.dataset.stage); 
+      });
+    });
+  }
+
+  function filteredDeals(){
+    const q = $('#search').value.trim().toLowerCase();
+    if(!q) return state.deals;
+    return state.deals.filter(d => [d.title,d.owner,d.notes,String(d.value
